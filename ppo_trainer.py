@@ -316,7 +316,7 @@ def load_discriminator(discriminator_path: str, device: str):
         return None
 
     try:
-        checkpoint = torch.load(discriminator_path, map_location=device)
+        checkpoint = torch.load(discriminator_path, map_location=device, weights_only=False)
         model_config = checkpoint['model_config']
 
         try:

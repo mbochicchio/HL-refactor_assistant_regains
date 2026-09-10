@@ -110,7 +110,7 @@ def load_trained_ppo_model(model_path: str, device: str) -> Tuple[torch.nn.Modul
     if not Path(model_path).exists():
         raise FileNotFoundError(f"Model not found: {model_path}")
 
-    checkpoint = torch.load(model_path, map_location=device)
+    checkpoint = torch.load(model_path, map_location=device, weights_only=False)
 
     # Get model configuration matching PPOConfig
     if 'model_config' in checkpoint:
@@ -157,7 +157,7 @@ def load_discriminator(discriminator_path: str, device: str) -> Optional[torch.n
         return None
 
     try:
-        checkpoint = torch.load(discriminator_path, map_location=device)
+        checkpoint = torch.load(discriminator_path, map_location=device, weights_only=False)
         model_config = checkpoint['model_config']
 
         discriminator = create_discriminator(**model_config)

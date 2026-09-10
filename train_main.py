@@ -127,7 +127,7 @@ def run_evaluation(config: PPOConfig, training_results: Dict[str, Any]) -> Dict[
 
     try:
         # Load model checkpoint
-        checkpoint = torch.load(best_model_path, map_location=config.device)
+        checkpoint = torch.load(best_model_path, map_location=config.device, weights_only=False)
 
         if 'model_config' in checkpoint:
             ac_config = checkpoint['model_config']
@@ -152,7 +152,7 @@ def run_evaluation(config: PPOConfig, training_results: Dict[str, Any]) -> Dict[
         discriminator = None
         if config.discriminator_path and Path(config.discriminator_path).exists():
             try:
-                disc_checkpoint = torch.load(config.discriminator_path, map_location=config.device)
+                disc_checkpoint = torch.load(config.discriminator_path, map_location=config.device, weights_only=False)
                 try:
                     from discriminator import create_discriminator
                     discriminator = create_discriminator(**disc_checkpoint['model_config'])

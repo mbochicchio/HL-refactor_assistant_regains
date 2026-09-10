@@ -458,7 +458,7 @@ class RefactorEnv(gym.Env):
         data_list = []
         for pt_file in pt_files:
             try:
-                data = torch.load(pt_file, map_location=self.device)
+                data = torch.load(pt_file, map_location=self.device, weights_only=False)
 
                 if isinstance(data, dict):
                     if 'data' in data:

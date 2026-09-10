@@ -234,7 +234,7 @@ def load_graph_data(data_dir: Path, max_samples_per_class: int = MAX_SAMPLES_PER
     if all_files:
         try:
             sample_file = all_files[0]
-            sample_data = torch.load(sample_file, map_location='cpu')
+            sample_data = torch.load(sample_file, map_location='cpu', weights_only=False)
             logger.info(f"📋 Sample file structure from {sample_file.name}:")
             if isinstance(sample_data, Data):
                 attrs = [attr for attr in dir(sample_data) if not attr.startswith('_')]
@@ -256,7 +256,7 @@ def load_graph_data(data_dir: Path, max_samples_per_class: int = MAX_SAMPLES_PER
     for file_path in all_files:
         try:
             # Load the file
-            loaded = torch.load(file_path, map_location='cpu')
+            loaded = torch.load(file_path, map_location='cpu', weights_only=False)
 
             # Extract data and label based on file format
             if isinstance(loaded, Data):

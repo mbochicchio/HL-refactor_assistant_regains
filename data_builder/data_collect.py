@@ -496,7 +496,7 @@ def validate_dataset(dataset_dir: Path) -> Dict:
 
     for pt_file in pt_files:
         try:
-            data = torch.load(pt_file, map_location='cpu')
+            data = torch.load(pt_file, map_location='cpu', weights_only=False)
 
             # Basic validation
             valid = True
