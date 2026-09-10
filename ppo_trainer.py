@@ -1182,7 +1182,10 @@ class PPOTrainer:
                 'encoder_type': self.config.encoder_type
             },
             'training_stats': self.training_stats,
-            'config': self.config,
+            # Stored as a plain dict (not the PPOConfig object) so checkpoints
+            # remain loadable from any script/module, not just the one that
+            # originally defined PPOConfig under __main__.
+            'config': asdict(self.config),
             'best_reward': self.best_reward
         }
 

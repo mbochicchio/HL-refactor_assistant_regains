@@ -5,6 +5,15 @@ Graph Refactoring PPO - Final Evaluation Script - CORRECTED VERSION
 
 """
 
+import sys
+try:
+    # Windows consoles often default to a non-UTF-8 codepage (e.g. cp1252),
+    # which crashes on any stray unicode character (emoji, etc.) in print().
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except AttributeError:
+    pass  # reconfigure() not available (older Python) - not fatal
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -881,8 +890,8 @@ if __name__ == "__main__":
     data_exists = Path(eval_config.data_path).exists()
 
     print("PPO MODEL AVAILABILITY CHECK:")
-    print(f"   PPO model: {'✅' if model_exists else '❌'} {eval_config.model_path}")
-    print(f"   Data: {'✅' if data_exists else '❌'} {eval_config.data_path}")
+    print(f"   PPO model: {'OK' if model_exists else 'MISSING'} {eval_config.model_path}")
+    print(f"   Data: {'OK' if data_exists else 'MISSING'} {eval_config.data_path}")
     print(f"   Seed: {args.seed}")
 
     if model_exists and data_exists:
