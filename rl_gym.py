@@ -449,7 +449,7 @@ class RefactorEnv(gym.Env):
         if not data_dir.exists():
             raise FileNotFoundError(f"Directory not found: {data_path}")
 
-        pt_files = list(data_dir.glob("*.pt"))
+        pt_files = sorted(data_dir.glob("*.pt"))
         if not pt_files:
             raise FileNotFoundError(f"No .pt files found in {data_path}")
 

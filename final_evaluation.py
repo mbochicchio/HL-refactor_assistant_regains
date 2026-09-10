@@ -58,25 +58,27 @@ class EvaluationConfig:
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.max_steps = 10
+        # Aligned with PPOConfig defaults (ppo_trainer.py) so that evaluation
+        # reward accounting matches the reward the model was trained under.
         self.reward_weights = {
             'hub_weight': 5.0,
             'step_valid': 0.01,
-            'step_invalid': -0.1,
-            'time_penalty': -0.02,
-            'early_stop_penalty': -0.5,
+            'step_invalid': -0.05,
+            'time_penalty': -0.01,
+            'early_stop_penalty': -0.1,
             'cycle_penalty': -0.2,
             'duplicate_penalty': -0.1,
             'adversarial_weight': 0.5,
-            'patience': 15,
-            'node_penalty': 1.0,
-            'edge_penalty': 0.02,
-            'cap_exceeded_penalty': -0.8,
+            'patience': 5,
+            'node_penalty': 0.3,
+            'edge_penalty': 0.005,
+            'cap_exceeded_penalty': -0.3,
             'success_threshold': 0.03,
             'success_bonus': 2.0,
         }
 
-        self.max_new_nodes = 5
-        self.max_growth = 1.3
+        self.max_new_nodes = 10
+        self.max_growth = 1.6
         self.growth_penalty_mode = 'quadratic'
         self.growth_penalty_power = 2
         self.growth_gamma_nodes = 2.0
@@ -842,7 +844,38 @@ def run_complete_ppo_evaluation_corrected():
     return evaluation_results
 
 
+def set_random_seeds(seed: int):
+    """Set random seeds for reproducibility (mirrors ppo_trainer.set_random_seeds)."""
+    import random as _random
+    _random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Final PPO evaluation (deterministic)")
+    parser.add_argument("--model_path", type=str, default=eval_config.model_path)
+    parser.add_argument("--discriminator_path", type=str, default=eval_config.discriminator_path)
+    parser.add_argument("--data_path", type=str, default=eval_config.data_path)
+    parser.add_argument("--results_dir", type=str, default=eval_config.results_dir)
+    parser.add_argument("--num_eval_episodes", type=int, default=eval_config.num_eval_episodes)
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.parse_args()
+
+    eval_config.model_path = args.model_path
+    eval_config.discriminator_path = args.discriminator_path
+    eval_config.data_path = args.data_path
+    eval_config.results_dir = args.results_dir
+    eval_config.num_eval_episodes = args.num_eval_episodes
+
+    # Must be set BEFORE any episode sampling / stochastic policy rollout,
+    # otherwise repeated runs of this script are not reproducible.
+    set_random_seeds(args.seed)
+
     # Check if PPO model exists
     model_exists = Path(eval_config.model_path).exists()
     data_exists = Path(eval_config.data_path).exists()
@@ -850,6 +883,7 @@ if __name__ == "__main__":
     print("PPO MODEL AVAILABILITY CHECK:")
     print(f"   PPO model: {'✅' if model_exists else '❌'} {eval_config.model_path}")
     print(f"   Data: {'✅' if data_exists else '❌'} {eval_config.data_path}")
+    print(f"   Seed: {args.seed}")
 
     if model_exists and data_exists:
         results = run_complete_ppo_evaluation_corrected()

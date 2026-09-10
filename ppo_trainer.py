@@ -57,7 +57,8 @@ class PPOConfig:
     num_layers: int = 3
     global_features_dim: int = 4
     dropout: float = 0.3
-    shared_encoder: bool = True  
+    shared_encoder: bool = True
+    encoder_type: str = "gcn"  # "gcn" (default) or "mlp" (no-graph-representation ablation)
 
     # Training phases
     num_episodes: int = 5000
@@ -473,7 +474,8 @@ class PPOTrainer:
             'num_actions': self.config.num_actions,
             'global_features_dim': self.config.global_features_dim,
             'dropout': self.config.dropout,
-            'shared_encoder': self.config.shared_encoder
+            'shared_encoder': self.config.shared_encoder,
+            'encoder_type': self.config.encoder_type
         }
 
         from actor_critic_models import create_actor_critic
@@ -1176,7 +1178,8 @@ class PPOTrainer:
                 'num_actions': self.config.num_actions,
                 'global_features_dim': self.config.global_features_dim,
                 'dropout': self.config.dropout,
-                'shared_encoder': self.config.shared_encoder
+                'shared_encoder': self.config.shared_encoder,
+                'encoder_type': self.config.encoder_type
             },
             'training_stats': self.training_stats,
             'config': self.config,
@@ -1343,13 +1346,77 @@ class PPOTrainer:
         self.logger.info(f"Results saved to {self.results_dir}")
 
 
+def build_config_from_args(args) -> PPOConfig:
+    """Build a PPOConfig from CLI args, applying ablation presets on top of the defaults."""
+    config = PPOConfig()
+
+    config.experiment_name = args.experiment_name
+    config.num_episodes = args.num_episodes
+    config.random_seed = args.seed
+    config.results_dir = args.results_dir
+    config.discriminator_path = args.discriminator_path
+    config.encoder_type = args.encoder_type
+
+    reward_overrides = {}
+
+    if args.ablation == "no_discriminator":
+        # Disable the adversarial signal entirely: no discriminator loaded,
+        # no adversarial term contribution/annealing.
+        config.discriminator_path = "results/discriminator_pretraining/__disabled__.pt"
+        config.adversarial_weight_start = 0.0
+        config.adversarial_weight_end = 0.0
+        reward_overrides['adversarial_weight'] = 0.0
+
+    elif args.ablation == "no_penalty":
+        # Zero out all punitive reward terms while keeping the structural
+        # (hub score) and adversarial signals intact.
+        reward_overrides.update({
+            'step_invalid': 0.0,
+            'time_penalty': 0.0,
+            'early_stop_penalty': 0.0,
+            'cycle_penalty': 0.0,
+            'duplicate_penalty': 0.0,
+            'node_penalty': 0.0,
+            'edge_penalty': 0.0,
+            'cap_exceeded_penalty': 0.0,
+        })
+
+    elif args.ablation == "no_graph":
+        config.encoder_type = "mlp"
+
+    if reward_overrides:
+        config.reward_weights = {**config.reward_weights, **reward_overrides}
+
+    return config
+
+
 def main():
     """Main training function"""
-    config = PPOConfig()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="PPO training for HL-smell graph refactoring")
+    parser.add_argument("--experiment_name", type=str, default="graph_refactor_ppo_corrected")
+    parser.add_argument("--num_episodes", type=int, default=5000)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--results_dir", type=str, default="results/ppo_training")
+    parser.add_argument("--discriminator_path", type=str,
+                         default="results/discriminator_pretraining/pretrained_discriminator.pt")
+    parser.add_argument("--encoder_type", type=str, default="gcn", choices=["gcn", "mlp"])
+    parser.add_argument("--ablation", type=str, default="none",
+                         choices=["none", "no_discriminator", "no_penalty", "no_graph"],
+                         help="Ablation variant to run; overrides discriminator/reward/encoder settings.")
+    args = parser.parse_args()
+
+    config = build_config_from_args(args)
 
     print("Starting Graph Refactoring PPO Training (Corrected)")
     print(f"Configuration: {config.experiment_name}")
+    print(f"Ablation: {args.ablation}")
     print(f"Episodes: {config.num_episodes}")
+    print(f"Seed: {config.random_seed}")
+    print(f"Encoder type: {config.encoder_type}")
+    print(f"Discriminator path: {config.discriminator_path}")
+    print(f"Results dir: {config.results_dir}")
     print(f"Max steps: {config.max_steps}")
     print(f"Device: {config.device}")
 

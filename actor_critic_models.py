@@ -93,6 +93,75 @@ class GraphEncoder(nn.Module):
         }
 
 
+class MLPEncoder(nn.Module):
+    """
+    Non-graph ablation encoder: processes each node independently through a
+    shared MLP (no message passing over edge_index), then applies the same
+    mean/max global pooling as GraphEncoder. Used for the "no graph
+    representation" ablation study: it has access to node features but is
+    structurally blind to the topology of the dependency graph.
+    """
+
+    def __init__(self,
+                 node_dim: int = 7,
+                 hidden_dim: int = 128,
+                 num_layers: int = 3,
+                 dropout: float = 0.2):
+        super().__init__()
+
+        self.node_dim = node_dim
+        self.hidden_dim = hidden_dim
+        self.dropout = dropout
+
+        self.input_proj = nn.Linear(node_dim, hidden_dim)
+
+        self.layers = nn.ModuleList([
+            nn.Linear(hidden_dim, hidden_dim) for _ in range(num_layers)
+        ])
+        self.norms = nn.ModuleList([
+            nn.LayerNorm(hidden_dim) for _ in range(num_layers)
+        ])
+
+        self.global_pool_mean = global_mean_pool
+        self.global_pool_max = global_max_pool
+
+        self._init_weights()
+
+    def _init_weights(self):
+        for module in self.modules():
+            if isinstance(module, nn.Linear):
+                nn.init.orthogonal_(module.weight, gain=np.sqrt(2))
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
+
+    def forward(self, data: Data) -> Dict[str, torch.Tensor]:
+        x = data.x
+
+        batch = getattr(data, 'batch', None)
+        if batch is None:
+            batch = torch.zeros(x.size(0), dtype=torch.long, device=x.device)
+
+        x = self.input_proj(x)
+        x = F.relu(x)
+
+        for layer, norm in zip(self.layers, self.norms):
+            h = x
+            x = layer(x)
+            x = norm(x)
+            x = F.relu(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+            x = x + h  # Skip connection
+
+        graph_emb_mean = self.global_pool_mean(x, batch)
+        graph_emb_max = self.global_pool_max(x, batch)
+        graph_emb = torch.cat([graph_emb_mean, graph_emb_max], dim=-1)
+
+        return {
+            'node_embeddings': x,
+            'graph_embedding': graph_emb
+        }
+
+
 class ActorCritic(nn.Module):
     """
     CORRECTED: Combined Actor-Critic with FORCED shared encoder for PPO
@@ -106,15 +175,20 @@ class ActorCritic(nn.Module):
                  num_actions: int = 7,
                  global_features_dim: int = 4,  # CORRECTED: From original 10 to 4
                  dropout: float = 0.2,
-                 shared_encoder: bool = True):  # CORRECTED: Always True for PPO
+                 shared_encoder: bool = True,  # CORRECTED: Always True for PPO
+                 encoder_type: str = "gcn"):  # "gcn" (default) or "mlp" (no-graph ablation)
         super().__init__()
 
         self.num_actions = num_actions
         # CORRECTED: Force shared encoder for proper PPO implementation
         self.shared_encoder = True
+        self.encoder_type = encoder_type
 
         # CORRECTED: Single shared encoder (no separate encoders)
-        self.encoder = GraphEncoder(node_dim, hidden_dim, num_layers, dropout)
+        if encoder_type == "mlp":
+            self.encoder = MLPEncoder(node_dim, hidden_dim, num_layers, dropout)
+        else:
+            self.encoder = GraphEncoder(node_dim, hidden_dim, num_layers, dropout)
 
         # Graph embedding dimension after concatenating mean and max pooling
         graph_emb_dim = hidden_dim * 2
@@ -366,7 +440,8 @@ def create_actor_critic(config: Dict) -> ActorCritic:
         num_actions=config.get('num_actions', 7),
         global_features_dim=config.get('global_features_dim', 4),  # CORRECTED: Default to 4
         dropout=config.get('dropout', 0.2),
-        shared_encoder=True  # CORRECTED: Always True for PPO
+        shared_encoder=True,  # CORRECTED: Always True for PPO
+        encoder_type=config.get('encoder_type', 'gcn')
     )
 
 
