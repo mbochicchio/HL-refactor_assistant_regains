@@ -291,7 +291,7 @@ def setup_logging(log_dir: Path):
         level=logging.INFO,
         format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
         handlers=[
-            logging.FileHandler(log_dir / 'training.log'),
+            logging.FileHandler(log_dir / 'training.log', encoding='utf-8'),
             logging.StreamHandler()
         ]
     )
