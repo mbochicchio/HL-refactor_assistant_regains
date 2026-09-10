@@ -1,4 +1,4 @@
-# Graph Refactoring with PPO - Replication Package
+# A Reinforcement Learning model for automatic refactoring of Hub-like Dependency smells
 
 This repository contains the implementation of a Proximal Policy Optimization (PPO) system for automatic graph refactoring using Graph Neural Networks and Reinforcement Learning.
 
@@ -318,6 +318,4 @@ Expected performance:
 
 ## License
 
-This project is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License - see the [LICENSE](LICENSE) file for details.
-
-For commercial use, please contact severgnini.matteo.00@gmail.com .
+This project is licensed under the Creative Commons Attribution 4.0 International License - see the [LICENSE](LICENSE) file for details.
