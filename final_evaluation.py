@@ -3,7 +3,6 @@
 Graph Refactoring PPO - Final Evaluation Script - CORRECTED VERSION
 =======================================================
 
-CLAUDE: Fixed directed graph visualization and discriminator metrics
 """
 
 import numpy as np
@@ -58,7 +57,6 @@ class EvaluationConfig:
         self.num_visualization_episodes = 5
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-        # CLAUDE: Parameters exactly matched to PPOConfig
         self.max_steps = 10
         self.reward_weights = {
             'hub_weight': 5.0,
@@ -77,7 +75,6 @@ class EvaluationConfig:
             'success_bonus': 2.0,
         }
 
-        # CLAUDE: Growth control from PPOConfig
         self.max_new_nodes = 5
         self.max_growth = 1.3
         self.growth_penalty_mode = 'quadratic'
@@ -183,14 +180,12 @@ class PPOGraphRefactoringEvaluator:
         self.config = config
         self.device = config.device
 
-        # CLAUDE: Initialize PPO-compatible environment using _build_env pattern
         self.env = PPORefactorEnv(
             data_path=config.data_path,
             discriminator=discriminator,
             max_steps=config.max_steps,
             device=config.device,
             reward_weights=config.reward_weights,
-            # CLAUDE: Growth control parameters from config
             max_new_nodes_per_episode=config.max_new_nodes,
             max_total_node_growth=config.max_growth,
             growth_penalty_mode=config.growth_penalty_mode,
@@ -230,14 +225,12 @@ class PPOGraphRefactoringEvaluator:
         if save_trajectory:
             episode_data['states'].append(initial_data.clone())
 
-        # CLAUDE: Get initial discriminator score with consistent metric
         initial_disc_score = None
         if self.discriminator is not None:
             with torch.no_grad():
                 try:
                     disc_output = self.discriminator(initial_data)
                     if isinstance(disc_output, dict):
-                        # CLAUDE: Use p_smelly = probability of class 1 = "smelly"
                         initial_disc_score = torch.softmax(disc_output['logits'], dim=1)[0, 1].item()
                     else:
                         initial_disc_score = torch.softmax(disc_output, dim=1)[0, 1].item()
@@ -253,12 +246,10 @@ class PPOGraphRefactoringEvaluator:
         current_data = initial_data
 
         while not done:
-            # CLAUDE: Extract global features using CORRECTED PPO method
             global_features = self._extract_global_features_corrected(current_data)
 
             # Get action from PPO model (greedy evaluation)
             with torch.no_grad():
-                # CLAUDE: Use Batch for consistency with training
                 state_batch = Batch.from_data_list([current_data]).to(self.device)
                 output = self.model(state_batch, global_features)
                 action_probs = output['action_probs']
@@ -296,14 +287,12 @@ class PPOGraphRefactoringEvaluator:
         final_data = current_data
         final_metrics = self.env._calculate_metrics(final_data)
 
-        # CLAUDE: Get final discriminator score with consistent metric
         final_disc_score = None
         if self.discriminator is not None:
             with torch.no_grad():
                 try:
                     disc_output = self.discriminator(final_data)
                     if isinstance(disc_output, dict):
-                        # CLAUDE: Use p_smelly = probability of class 1 = "smelly"
                         final_disc_score = torch.softmax(disc_output['logits'], dim=1)[0, 1].item()
                     else:
                         final_disc_score = torch.softmax(disc_output, dim=1)[0, 1].item()
@@ -313,7 +302,6 @@ class PPOGraphRefactoringEvaluator:
         # Compile episode results
         hub_improvement = initial_metrics['hub_score'] - final_metrics['hub_score']
 
-        # CLAUDE: Corrected discriminator improvement = p_smelly_before - p_smelly_after (positive = improvement)
         disc_improvement = 0.0
         if initial_disc_score is not None and final_disc_score is not None:
             disc_improvement = initial_disc_score - final_disc_score
@@ -461,7 +449,6 @@ class PPOGraphRefactoringEvaluator:
             'mean_action_confidence': np.mean(action_confidences),
             'std_action_confidence': np.std(action_confidences),
 
-            # CLAUDE: Consistent discriminator statistics
             'discriminator_available': len(disc_improvements) > 0,
             'mean_disc_improvement': np.mean(disc_improvements) if disc_improvements else 0.0,
             'std_disc_improvement': np.std(disc_improvements) if disc_improvements else 0.0,
@@ -533,16 +520,12 @@ class PPOGraphRefactoringEvaluator:
                 print(f"   {name}: {freq:.1%} usage, {success_rate:.1%} success")
 
 
-# CLAUDE: Corrected graph visualization for directed graphs
 def visualize_ppo_graph_comparison_corrected(before_graph: Data, after_graph: Data,
                                              episode_info: Dict, save_path: Optional[str] = None) -> None:
-    """CLAUDE: Visualize before/after comparison with CORRECTED directed graph handling"""
 
-    # CLAUDE: Convert to NetworkX as DIRECTED graphs (never to_undirected)
     G_before = to_networkx(before_graph, to_undirected=False)
     G_after = to_networkx(after_graph, to_undirected=False)
 
-    # CLAUDE: Get hub information from hub tracker
     hub_tracker_data = episode_info.get('hub_tracker_data', {})
     current_hub_index = hub_tracker_data.get('current_hub_index', 0)
     original_hub_id = hub_tracker_data.get('original_hub_id', 'node_0')
@@ -552,11 +535,9 @@ def visualize_ppo_graph_comparison_corrected(before_graph: Data, after_graph: Da
 
     hub_node = current_hub_index
 
-    # CLAUDE: Find differences in DIRECTED edges (direction matters!)
     nodes_before = set(G_before.nodes())
     nodes_after = set(G_after.nodes())
 
-    # CLAUDE: For directed graphs, edges are (u,v) tuples where direction matters
     edges_before = set(G_before.edges())
     edges_after = set(G_after.edges())
 
@@ -568,7 +549,6 @@ def visualize_ppo_graph_comparison_corrected(before_graph: Data, after_graph: Da
     # Create figure
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
 
-    # CLAUDE: Use shared layout for consistency
     all_nodes = nodes_before.union(nodes_after)
     if len(all_nodes) <= 50:
         layout_graph = G_after if len(G_after.nodes()) >= len(G_before.nodes()) else G_before
@@ -582,7 +562,6 @@ def visualize_ppo_graph_comparison_corrected(before_graph: Data, after_graph: Da
                   f"Hub: {original_hub_id} (index {current_hub_index})",
                   fontsize=14, fontweight='bold')
 
-    # CLAUDE: Draw directed edges for BEFORE graph with arrows
     if G_before.edges():
         nx.draw_networkx_edges(G_before, pos, ax=ax1,
                                edge_color=eval_config.colors['original_edges'],
@@ -604,7 +583,6 @@ def visualize_ppo_graph_comparison_corrected(before_graph: Data, after_graph: Da
         nx.draw_networkx_nodes(G_before, pos, ax=ax1, node_color=node_colors,
                                node_size=node_sizes, alpha=0.8)
 
-        # CLAUDE: Draw labels with original IDs if available
         if reverse_mapping:
             node_labels = {node: reverse_mapping.get(node, str(node)) for node in G_before.nodes()}
             node_labels = {k: (v[:8] + '...' if len(v) > 8 else v) for k, v in node_labels.items()}
@@ -622,7 +600,6 @@ def visualize_ppo_graph_comparison_corrected(before_graph: Data, after_graph: Da
                   f"Hub: {original_hub_id} ({'LOST' if hub_lost else 'tracked'})",
                   fontsize=14, fontweight='bold')
 
-    # CLAUDE: Draw original directed edges
     original_edges = [(u, v) for u, v in G_after.edges() if (u, v) in edges_before]
     if original_edges:
         nx.draw_networkx_edges(G_after, pos, edgelist=original_edges, ax=ax2,
@@ -630,7 +607,6 @@ def visualize_ppo_graph_comparison_corrected(before_graph: Data, after_graph: Da
                                width=eval_config.edge_width, alpha=0.6,
                                arrows=True, arrowsize=20, arrowstyle='->')
 
-    # CLAUDE: Draw added directed edges with different style
     added_edges_list = [(u, v) for u, v in G_after.edges() if (u, v) in added_edges]
     if added_edges_list:
         nx.draw_networkx_edges(G_after, pos, edgelist=added_edges_list, ax=ax2,
@@ -659,7 +635,6 @@ def visualize_ppo_graph_comparison_corrected(before_graph: Data, after_graph: Da
         nx.draw_networkx_nodes(G_after, pos, ax=ax2, node_color=node_colors,
                                node_size=node_sizes, alpha=0.8)
 
-        # CLAUDE: Draw labels for AFTER graph
         if reverse_mapping:
             node_labels = {}
             for node in G_after.nodes():
@@ -717,7 +692,6 @@ PPO Episode {episode_info['episode_id']} Summary:
     plt.figtext(0.02, 0.95, info_text, fontsize=10, fontfamily='monospace',
                 bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray", alpha=0.8))
 
-    # CLAUDE: Add modifications summary with directed edges
     mod_text = f"""
 Graph Modifications:
 • Nodes added: {len(added_nodes)}
@@ -846,7 +820,6 @@ def run_complete_ppo_evaluation_corrected():
     print("Creating PPO performance dashboard...")
     create_ppo_performance_dashboard(evaluation_results)
 
-    # CLAUDE: Create corrected graph comparisons
     print("Creating corrected graph visualizations...")
     for i, episode_data in enumerate(evaluation_results['trajectories']):
         if episode_data['initial_graph'] is not None and episode_data['final_graph'] is not None:

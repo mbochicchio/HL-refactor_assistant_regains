@@ -96,7 +96,6 @@ def run_discriminator_pretraining(discriminator_path: str, force_retrain: bool =
 
 
 def run_ppo_training(config: PPOConfig) -> Dict[str, Any]:
-    """CLAUDE: Run complete PPO training using PPOConfig as single source of truth"""
     logger = logging.getLogger(__name__)
     logger.info("Starting PPO training...")
 
@@ -112,7 +111,6 @@ def run_ppo_training(config: PPOConfig) -> Dict[str, Any]:
 
 
 def run_evaluation(config: PPOConfig, training_results: Dict[str, Any]) -> Dict[str, Any]:
-    """CLAUDE: Comprehensive evaluation using _build_env pattern from trainer"""
     logger = logging.getLogger(__name__)
     logger.info("Starting comprehensive evaluation...")
 
@@ -131,12 +129,10 @@ def run_evaluation(config: PPOConfig, training_results: Dict[str, Any]) -> Dict[
         # Load model checkpoint
         checkpoint = torch.load(best_model_path, map_location=config.device)
 
-        # CLAUDE: Use model config from checkpoint or PPOConfig defaults
         if 'model_config' in checkpoint:
             ac_config = checkpoint['model_config']
             logger.info(f"Using saved model config: {ac_config}")
         else:
-            # CLAUDE: Fallback config from PPOConfig
             ac_config = {
                 'node_dim': config.node_dim,
                 'hidden_dim': config.hidden_dim,
@@ -167,14 +163,12 @@ def run_evaluation(config: PPOConfig, training_results: Dict[str, Any]) -> Dict[
             except Exception as e:
                 logger.warning(f"Could not load discriminator: {e}")
 
-        # CLAUDE: Initialize environment using same pattern as trainer (_build_env)
         env = PPORefactorEnv(
             data_path=config.data_path,
             discriminator=discriminator,
             max_steps=config.max_steps,
             device=config.device,
             reward_weights=config.reward_weights,
-            # CLAUDE: Growth control parameters from config
             max_new_nodes_per_episode=config.max_new_nodes,
             max_total_node_growth=config.max_growth,
             growth_penalty_mode=config.growth_penalty_mode,
@@ -320,7 +314,6 @@ def run_evaluation(config: PPOConfig, training_results: Dict[str, Any]) -> Dict[
 
 
 def print_reward_weights_safely(reward_weights: Dict[str, float]):
-    """CLAUDE: Print reward weights using .get() to avoid KeyError"""
     print("Reward Configuration:")
 
     # Main reward components
@@ -354,7 +347,7 @@ def print_reward_weights_safely(reward_weights: Dict[str, float]):
 
 def main():
     """
-    CLAUDE: Main function using PPOConfig as single source of truth
+    Main function using PPOConfig as single source of truth
     """
 
     # Create PPOConfig with all defaults - no arguments, no overrides
@@ -370,11 +363,9 @@ def main():
     print(f"Warmup episodes: {config.warmup_episodes}")
     print()
 
-    # CLAUDE: Print reward weights safely using .get()
     print_reward_weights_safely(config.reward_weights)
     print()
 
-    # CLAUDE: Print growth control parameters
     print("Growth Control Configuration:")
     print(f"  Max New Nodes: {config.max_new_nodes}")
     print(f"  Max Growth Ratio: {config.max_growth}")
@@ -421,7 +412,7 @@ def main():
             print(f"Average Reward: {summary['avg_episode_reward']:.3f}")
             print(f"Average Episode Length: {summary['avg_episode_length']:.1f}")
 
-            # CLAUDE: Check acceptance criteria from prompt
+            # Check acceptance criteria from prompt
             success_rate = summary['success_rate']
             avg_reward = summary['avg_episode_reward']
             avg_hub_delta = summary['avg_hub_improvement']

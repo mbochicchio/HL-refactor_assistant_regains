@@ -124,23 +124,18 @@ class RefactorEnv(gym.Env):
                  max_steps: int = 20,
                  reward_weights: Optional[Dict[str, float]] = None,
                  device: str = 'cuda' if torch.cuda.is_available() else 'cpu',
-                 # CLAUDE: Growth control parameters from PPOConfig
                  max_new_nodes_per_episode: int = 5,
                  max_total_node_growth: float = 1.3,
                  growth_penalty_mode: str = 'quadratic',
                  growth_penalty_power: int = 2,
                  growth_penalty_gamma_nodes: float = 2.0,
                  growth_penalty_gamma_edges: float = 1.0):
-        """
-        CLAUDE: Initialize with all parameters controlled by PPOConfig
-        """
         super(RefactorEnv, self).__init__()
 
         self.device = device
         self.max_steps = max_steps
         self.discriminator = discriminator
 
-        # CLAUDE: Growth control parameters from config
         self.max_new_nodes_per_episode = max_new_nodes_per_episode
         self.max_total_node_growth = max_total_node_growth
         self.growth_penalty_mode = growth_penalty_mode
@@ -148,7 +143,6 @@ class RefactorEnv(gym.Env):
         self.growth_penalty_gamma_nodes = growth_penalty_gamma_nodes
         self.growth_penalty_gamma_edges = growth_penalty_gamma_edges
 
-        # CLAUDE: Robust reward weights merge with complete defaults
         default_rw = {
             'hub_weight': 5.0,
             'step_valid': 0.01,
@@ -168,7 +162,6 @@ class RefactorEnv(gym.Env):
             'success_bonus': 2.0,
         }
 
-        # CLAUDE: Robust merge as specified in requirements
         if reward_weights is None:
             reward_weights = {}
 
@@ -527,7 +520,6 @@ class RefactorEnv(gym.Env):
 
         self.current_step = 0
 
-        # CLAUDE: Growth tracking initialization
         self.initial_num_nodes = int(self.current_data.num_nodes)
         self.initial_num_edges = int(self.current_data.edge_index.shape[1])
         self.prev_num_nodes = self.initial_num_nodes
@@ -573,9 +565,7 @@ class RefactorEnv(gym.Env):
             *,
             terminal: bool = False
     ) -> float:
-        """
-        CLAUDE: Growth penalties - ONLY terminal penalties for excess over cap
-        """
+        
         # No per-step penalties - allow constructive sequences
         if not terminal:
             return 0.0
@@ -951,7 +941,6 @@ class RefactorEnv(gym.Env):
         return True
 
     def _extract_unit(self) -> bool:
-        """CLAUDE: Extract unit with proper redirect - removes original (hub, n) when adding (new, n)"""
         growth_cap = self._calculate_growth_cap()
         if self.current_data.num_nodes + 1 >= growth_cap:  # Need room for 2 nodes
             return False
@@ -993,7 +982,6 @@ class RefactorEnv(gym.Env):
 
         new_edges = []
 
-        # CLAUDE: Proper redirect - remove original (hub, n) when adding (new, n)
         for i in range(edge_index.shape[1]):
             src, dst = edge_index[0, i].item(), edge_index[1, i].item()
             if src != current_hub and dst != current_hub:
@@ -1151,7 +1139,6 @@ class RefactorEnv(gym.Env):
             # Action 2 (MoveEdge): requires both remove and add possible
             mask[2] = mask[0] and mask[1]
 
-            # CLAUDE: Growth cap constraints for node-adding actions
             mask[3] = (edge_index.shape[1] > 0) and (not at_cap)  # ExtractMethod
             mask[4] = (edge_index.shape[1] >= 3) and (not at_cap)  # ExtractAbstractUnit
 

@@ -37,11 +37,10 @@ class PPOConfig:
     discriminator_path: str = "results/discriminator_pretraining/pretrained_discriminator.pt"
     results_dir: str = "results/ppo_training"
 
-    # Environment parameters - CLAUDE: Now controlled by PPOConfig
-    max_steps: int = 10  # CLAUDE: renamed from max_episode_steps for consistency
+    # Environment parametersg
+    max_steps: int = 10  
     num_actions: int = 7
 
-    # CLAUDE: Added growth control parameters from prompt requirements
     max_new_nodes: int = 10
     max_growth: float = 1.6
     growth_penalty_mode: str = "quadratic"
@@ -49,16 +48,16 @@ class PPOConfig:
     growth_gamma_nodes: float = 2.0
     growth_gamma_edges: float = 1.0
 
-    # Reward weights with defaults - CLAUDE: Complete set as required
+    # Reward weights with defaults
     reward_weights: Optional[Dict[str, float]] = None
 
-    # Model architecture - CLAUDE: All dimensions controlled by PPOConfig
+    # Model architecture
     node_dim: int = 7
     hidden_dim: int = 256
     num_layers: int = 3
     global_features_dim: int = 4
     dropout: float = 0.3
-    shared_encoder: bool = True  # CLAUDE: Force shared encoder for PPO
+    shared_encoder: bool = True  
 
     # Training phases
     num_episodes: int = 5000
@@ -107,7 +106,6 @@ class PPOConfig:
     entropy_coef_end: float = 0.01
     entropy_anneal_episodes: int = 4000
 
-    # CLAUDE: Cyclic Learning Rate parameters as specified
     use_cyclic_lr: bool = True
     base_lr: float = 1e-4
     max_lr: float = 2e-4
@@ -140,7 +138,6 @@ class PPOConfig:
     real_fake_ratio: float = 0.5  # Rapporto tra grafi reali e generati
 
     def __post_init__(self):
-        # CLAUDE: Complete default reward weights as specified in requirements
         default_rw = {
             'hub_weight': 5.0,
             'step_valid': 0.01,
@@ -159,7 +156,6 @@ class PPOConfig:
             'success_threshold': 0.03,
             'success_bonus': 2.0,
         }
-        # CLAUDE: Robust merge as specified
         self.reward_weights = {**default_rw, **(self.reward_weights or {})}
 
 
@@ -360,7 +356,6 @@ class PPOTrainer:
         # Set random seeds
         set_random_seeds(config.random_seed)
 
-        # CLAUDE: Initialize environment using controlled _build_env method
         self.env = self._build_env()
 
         # Build curriculum sampler
@@ -405,13 +400,11 @@ class PPOTrainer:
                 'fake_confidences': []
             }
 
-        # CLAUDE: Initialize model without hard-coded dimensions
         self._init_model()
 
         # Single optimizer with config LR
         self.optimizer = optim.Adam(self.model.parameters(), lr=config.lr, eps=1e-5)
 
-        # CLAUDE: Cyclic Learning Rate as specified
         self.scheduler = None
         if self.config.use_cyclic_lr:
             self.scheduler = torch.optim.lr_scheduler.CyclicLR(
@@ -454,7 +447,6 @@ class PPOTrainer:
 
         self.logger.info("PPO Trainer initialized successfully!")
 
-    # CLAUDE: Method to build environment controlled by PPOConfig
     def _build_env(self):
         """Build environment using PPOConfig parameters"""
         from rl_gym import RefactorEnv
@@ -464,7 +456,6 @@ class PPOTrainer:
             max_steps=self.config.max_steps,
             device=self.config.device,
             reward_weights=self.config.reward_weights,
-            # CLAUDE: Growth control parameters from config
             max_new_nodes_per_episode=self.config.max_new_nodes,
             max_total_node_growth=self.config.max_growth,
             growth_penalty_mode=self.config.growth_penalty_mode,
@@ -473,7 +464,6 @@ class PPOTrainer:
             growth_penalty_gamma_edges=self.config.growth_gamma_edges
         )
 
-    # CLAUDE: Model initialization without hard-code
     def _init_model(self):
         """Initialize actor-critic model from PPOConfig parameters"""
         ac_config = {
@@ -670,7 +660,6 @@ class PPOTrainer:
         return mixed_probs
 
     def update_ppo(self) -> Dict:
-        """CLAUDE: PPO update with target_kl respect and scheduler step per optimizer step"""
         if len(self.buffer) == 0:
             return {}
 
@@ -799,7 +788,6 @@ class PPOTrainer:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.max_grad_norm)
                 self.optimizer.step()
 
-                # CLAUDE: Scheduler step per optimizer step as specified
                 if self.scheduler is not None:
                     try:
                         self.scheduler.step()
@@ -812,7 +800,6 @@ class PPOTrainer:
                 total_entropy += ent.item()
                 num_updates += 1
 
-                # CLAUDE: KL early stopping with min_mb_before_kl
                 with torch.no_grad():
                     approx_kl = (oldlogp_mb - new_log_probs).mean().clamp_min(0).item()
                     clip_fraction = ((ratio - 1.0).abs() > self.config.clip_eps).float().mean().item()
@@ -1016,7 +1003,6 @@ class PPOTrainer:
         return {}
 
     def evaluate_model(self) -> Dict[str, float]:
-        """CLAUDE: Evaluate model using same device path and logging action_usage"""
         self.model.eval()
 
         eval_rewards = []
@@ -1034,7 +1020,6 @@ class PPOTrainer:
 
             done = False
             while not done:
-                # CLAUDE: Use Batch on self.device for policy/discriminator
                 state_batch = Batch.from_data_list([current_data]).to(self.device)
                 global_features = self._extract_global_features(current_data)
                 action_mask = torch.tensor(self.env.get_action_mask(), dtype=torch.bool, device=self.device)
@@ -1081,7 +1066,6 @@ class PPOTrainer:
 
         self.model.train()
 
-        # CLAUDE: Log action_usage and valid_action_coverage if available
         if hasattr(self, 'logger'):
             total_actions = sum(action_usage.values())
             if total_actions > 0:
@@ -1293,7 +1277,6 @@ class PPOTrainer:
                 )
 
                 for key, value in eval_metrics.items():
-                    # CLAUDE: Skip non-scalar values for TensorBoard
                     if isinstance(value, (int, float)):
                         self.writer.add_scalar(f'Evaluation/{key}', value, episode_count)
 
